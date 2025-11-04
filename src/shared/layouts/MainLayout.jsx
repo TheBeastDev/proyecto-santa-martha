@@ -1,14 +1,16 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
+import Navbar from '@shared/components/Navbar';
+import Footer from '@shared/components/Footer';
 
 const MainLayout = () => {
   return (
-    <div>
-      {/* Aquí irían el Navbar y otros componentes comunes */}
-      <main>
+    <div className="flex flex-col min-h-screen">
+      <Navbar />
+      <main className="flex-grow">
         <Outlet />
       </main>
-      {/* Aquí iría el Footer */}
+      <Footer />
     </div>
   );
 };
