@@ -13,9 +13,7 @@ import RegisterPage from '@features/auth/pages/RegisterPage'
 import CatalogPage from '@features/products/pages/CatalogPage'
 import ProductDetailPage from '@features/products/pages/ProductDetailPage'
 import CartPage from '@features/cart/pages/CartPage'
-
-// Placeholder for CheckoutPage
-const CheckoutPage = () => <div className="text-center p-8"><h1 className="text-3xl font-bold">Checkout</h1></div>
+import CheckoutPage from '@features/checkout/pages/CheckoutPage'
 
 function App() {
   return (
