@@ -1,13 +1,28 @@
 import { Link, NavLink } from 'react-router-dom'
 import { ShoppingCart, User, Menu, X } from 'lucide-react'
-import { useSelector } from 'react-redux'
-import { selectTotalItems } from '@features/cart/cartSlice'
-import { useState } from 'react'
+import { useSelector, useDispatch } from 'react-redux'
+import { selectTotalItems, fetchCart } from '@features/cart/cartSlice' // Import fetchCart
+import { logout } from '@features/auth/authSlice' // Import logout
+import { useState, useEffect } from 'react' // Import useEffect
 
 export default function Navbar() {
   const totalItems = useSelector(selectTotalItems)
   const { isAuthenticated, user } = useSelector((state) => state.auth)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false) // New state for user menu
+  const dispatch = useDispatch(); // Initialize useDispatch
+
+  // Fetch cart on component mount if authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      dispatch(fetchCart());
+    }
+  }, [isAuthenticated, user, dispatch]); // Add user as a dependency
+
+  const handleLogout = () => {
+    dispatch(logout());
+    setIsUserMenuOpen(false);
+  };
 
   return (
     <nav className="bg-white shadow-sm sticky top-0 z-50">
@@ -15,7 +30,7 @@ export default function Navbar() {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded"></div>
+            <img src="/cake-roll.svg" alt="logo" className="w-8 h-8" />
             <span className="text-xl font-bold text-gray-900">
               Panadería Santa Martha
             </span>
@@ -45,7 +60,7 @@ export default function Navbar() {
                 isActive ? 'text-primary font-medium' : 'text-gray-700 hover:text-primary'
               }
             >
-              About
+              Nosotros
             </NavLink>
             <NavLink
               to="/contacto"
@@ -72,16 +87,51 @@ export default function Navbar() {
             </Link>
 
             {isAuthenticated ? (
-              <Link
-                to={user?.role === 'ADMINISTRADOR' ? '/admin' : '/profile'}
-                className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-full transition-colors"
-              >
-                <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-                  <span className="text-primary text-sm font-semibold">
-                    {user?.name?.charAt(0) || 'U'}
-                  </span>
-                </div>
-              </Link>
+              <div className="relative">
+                <button
+                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                  className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
+                    <span className="text-primary text-sm font-semibold">
+                      {user?.name?.charAt(0) || 'U'}
+                    </span>
+                  </div>
+                </button>
+                {isUserMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
+                    <Link
+                      to="/profile"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      onClick={() => setIsUserMenuOpen(false)}
+                    >
+                      Mi Perfil
+                    </Link>
+                    <Link
+                      to="/mis-pedidos"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      onClick={() => setIsUserMenuOpen(false)}
+                    >
+                      Mis Pedidos
+                    </Link>
+                    {user?.role === 'ADMIN' && ( // Corrected condition
+                      <Link
+                        to="/admin"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        onClick={() => setIsUserMenuOpen(false)}
+                      >
+                        Panel de Admin
+                      </Link>
+                    )}
+                    <button
+                      onClick={handleLogout}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Cerrar Sesión
+                    </button>
+                  </div>
+                )}
+              </div>
             ) : (
               <Link
                 to="/login"
@@ -140,7 +190,7 @@ export default function Navbar() {
                     : 'text-gray-700 hover:text-primary'
                 }
               >
-                About
+                Nosotros
               </NavLink>
               <NavLink
                 to="/contacto"

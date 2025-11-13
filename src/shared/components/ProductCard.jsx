@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { ShoppingCart } from 'lucide-react'
 import { useDispatch } from 'react-redux'
-import { addItem } from '@features/cart/cartSlice'
+import { addToCart } from '@features/cart/cartSlice' // Import addToCart async thunk
 import Button from './Button'
 
 export default function ProductCard({ product }) {
@@ -10,14 +10,14 @@ export default function ProductCard({ product }) {
   const handleAddToCart = (e) => {
     e.preventDefault()
     e.stopPropagation()
-    dispatch(addItem({ product, quantity: 1 }))
+    dispatch(addToCart({ productId: product.id, quantity: 1 })) // Dispatch async thunk
   }
 
   return (
     <Link to={`/producto/${product.id}`} className="card group hover:shadow-xl transition-shadow duration-300">
       <div className="relative aspect-square overflow-hidden">
         <img
-          src={product.image}
+          src={product.images?.[0] || '/cake-roll.svg'}
           alt={product.name}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />

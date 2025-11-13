@@ -9,7 +9,7 @@ export default function Footer() {
           {/* Logo y descripción */}
           <div>
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 bg-primary rounded"></div>
+              <img src="/cake-roll.svg" alt="logo" className="w-8 h-8" />
               <span className="text-xl font-bold text-white">
                 Panadería Santa Martha
               </span>
@@ -25,7 +25,7 @@ export default function Footer() {
             <ul className="space-y-2 text-sm">
               <li>
                 <Link to="/" className="hover:text-primary transition-colors">
-                  Home
+                  Inicio
                 </Link>
               </li>
               <li>
@@ -33,7 +33,7 @@ export default function Footer() {
                   to="/catalogo"
                   className="hover:text-primary transition-colors"
                 >
-                  Products
+                  Productos
                 </Link>
               </li>
               <li>
@@ -41,15 +41,15 @@ export default function Footer() {
                   to="/about"
                   className="hover:text-primary transition-colors"
                 >
-                  About Us
+                  Nosotros
                 </Link>
               </li>
               <li>
                 <Link
-                  to="/contact"
+                  to="/contacto"
                   className="hover:text-primary transition-colors"
                 >
-                  Contact
+                  Contacto
                 </Link>
               </li>
             </ul>
