@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux'
 import { Minus, Plus, ShoppingCart, ArrowLeft } from 'lucide-react'
 import { selectProductById } from '@features/products/productsSlice'
-import { addItem } from '@features/cart/cartSlice'
+import { addToCart } from '@features/cart/cartSlice'
 import Button from '@shared/components/Button'
 import ProductCard from '@shared/components/ProductCard'
 
@@ -32,22 +32,20 @@ export default function ProductDetailPage() {
     )
   }
 
-  const images = [
-    product.image,
-    product.image,
-    product.image
-  ]
+  const images = (product.images && product.images.length > 0)
+    ? product.images
+    : ['/cake-roll.svg'];
 
   const relatedProducts = allProducts
     .filter(p => p.category === product.category && p.id !== product.id)
     .slice(0, 4)
 
   const handleAddToCart = () => {
-    dispatch(addItem({ product, quantity }))
+    dispatch(addToCart({ productId: product.id, quantity }))
   }
 
   const handleBuyNow = () => {
-    dispatch(addItem({ product, quantity }))
+    dispatch(addToCart({ productId: product.id, quantity }))
     navigate('/carrito')
   }
 
@@ -70,10 +68,10 @@ export default function ProductDetailPage() {
             <li className="text-gray-400">/</li>
             <li>
               <Link
-                to={`/catalogo?category=${product.category}`}
+                to={`/catalogo?category=${product.category?.name}`}
                 className="text-gray-600 hover:text-primary"
               >
-                {product.category}
+                {product.category?.name || 'Categoría'}
               </Link>
             </li>
             <li className="text-gray-400">/</li>
@@ -123,7 +121,7 @@ export default function ProductDetailPage() {
             <div>
               <div className="mb-4">
                 <span className="inline-block px-3 py-1 bg-orange-100 text-primary text-sm font-medium rounded-full">
-                  {product.category}
+                  {product.category?.name || 'Sin categoría'}
                 </span>
               </div>
 

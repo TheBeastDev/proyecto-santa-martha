@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
-import { useDispatch } from 'react-redux'
-import { loginSuccess } from '@features/auth/authSlice'
+import { useDispatch, useSelector } from 'react-redux' // Import useSelector
+import { registerUser, selectAuthStatus, selectAuthError } from '@features/auth/authSlice' // Import registerUser, status, error
 import Input from '@shared/components/Input'
 import Button from '@shared/components/Button'
 import { UserPlus } from 'lucide-react'
@@ -10,22 +10,19 @@ import { UserPlus } from 'lucide-react'
 export default function RegisterPage() {
   const navigate = useNavigate()
   const dispatch = useDispatch()
-  const [error, setError] = useState('')
+  const authStatus = useSelector(selectAuthStatus); // Get auth status
+  const authError = useSelector(selectAuthError); // Get auth error
   
   const { register: registerField, handleSubmit, watch, formState: { errors } } = useForm()
   const password = watch('password')
 
-  const onSubmit = (data) => {
-    // Mock registration - En producción, esto haría una llamada al backend
-    const mockUser = {
-      id: Date.now(),
-      name: data.name,
-      email: data.email,
-      role: 'CLIENTE'
+  const onSubmit = async (data) => {
+    try {
+      await dispatch(registerUser(data)).unwrap();
+      navigate('/login'); // Redirect to login after successful registration
+    } catch (error) {
+      console.error('Registration failed:', error);
     }
-    
-    dispatch(loginSuccess({ user: mockUser, token: 'fake-jwt-token' }))
-    navigate('/')
   }
 
   return (
@@ -44,9 +41,9 @@ export default function RegisterPage() {
             </p>
           </div>
 
-          {error && (
+          {authStatus === 'failed' && authError && ( // Display error from Redux state
             <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
-              {error}
+              {authError.message || 'Error al registrar usuario'}
             </div>
           )}
 
@@ -128,8 +125,8 @@ export default function RegisterPage() {
               <p className="text-sm text-red-500">{errors.terms.message}</p>
             )}
 
-            <Button type="submit" fullWidth size="lg">
-              Crear Cuenta
+            <Button type="submit" fullWidth size="lg" disabled={authStatus === 'loading'}>
+              {authStatus === 'loading' ? 'Registrando...' : 'Crear Cuenta'}
             </Button>
           </form>
 

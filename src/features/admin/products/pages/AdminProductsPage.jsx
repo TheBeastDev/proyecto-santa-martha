@@ -1,35 +1,117 @@
-import { useState } from 'react'
-import { Plus, Edit, Trash2, Search } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { Plus, Edit, Search, AlertCircle, X, Archive, ArchiveRestore, ArchiveX } from 'lucide-react'
 import { useSelector, useDispatch } from 'react-redux'
 import Button from '@shared/components/Button'
+import ProductModal from '../components/ProductModal'
+import CategoryModal from '../components/CategoryModal'
+import ArchivedProductsModal from '../components/ArchivedProductsModal'
+import { fetchProducts, createProduct, updateProduct, archiveProduct, selectProductsError, clearProductsError } from '@features/products/productsSlice'
+import { fetchCategories, selectCategories, createCategory } from '@features/categories/categoriesSlice'
 
 export default function AdminProductsPage() {
   const products = useSelector((state) => state.products.products)
+  const error = useSelector(selectProductsError)
+  const categories = useSelector(selectCategories)
   const dispatch = useDispatch()
   const [searchQuery, setSearchQuery] = useState('')
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState(null)
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
+  const [isArchivedModalOpen, setIsArchivedModalOpen] = useState(false)
+  const [alertError, setAlertError] = useState(null);
 
-  const filteredProducts = products.filter(p =>
+  useEffect(() => {
+    dispatch(fetchProducts());
+    dispatch(fetchCategories());
+  }, [dispatch])
+
+  useEffect(() => {
+    if (error) {
+      setAlertError(error);
+      dispatch(clearProductsError()); 
+    }
+  }, [error, dispatch]);
+
+  const { activeProducts, archivedProducts } = useMemo(() => {
+    const active = [];
+    const archived = [];
+    products.forEach(p => {
+      if (p.isArchived) {
+        archived.push(p);
+      } else {
+        active.push(p);
+      }
+    });
+    return { activeProducts: active, archivedProducts: archived };
+  }, [products]);
+
+  const filteredProducts = activeProducts.filter(p =>
     p.name.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  const handleDelete = (id) => {
-    if (confirm('¿Estás seguro de eliminar este producto?')) {
-      // dispatch(deleteProduct(id)) // Se implementará en el slice
+  const handleArchive = (productId) => {
+    if (confirm('¿Estás seguro de archivar este producto?')) {
+      dispatch(archiveProduct({ productId, archive: true }))
     }
+  }
+
+  const handleRestore = (productId) => {
+    dispatch(archiveProduct({ productId, archive: false }));
+  }
+
+  const handleSave = (productData) => {
+    if (selectedProduct) {
+      dispatch(updateProduct({ ...productData, id: selectedProduct.id }))
+    } else {
+      dispatch(createProduct(productData))
+    }
+    setIsModalOpen(false)
+    setSelectedProduct(null)
+  }
+
+  const handleSaveCategory = (categoryData) => {
+    dispatch(createCategory(categoryData))
+    setIsCategoryModalOpen(false)
   }
 
   return (
     <div className="space-y-6">
+      {alertError && (
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg flex justify-between items-center" role="alert">
+          <div className="flex items-center">
+            <AlertCircle className="w-6 h-6 mr-3" />
+            <div>
+              <p className="font-bold">Error</p>
+              <p>{alertError}</p>
+            </div>
+          </div>
+          <button onClick={() => setAlertError(null)} className="p-1 rounded-full hover:bg-red-200">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+      )}
+
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Productos</h1>
           <p className="text-gray-600 mt-2">
-            Gestiona el catálogo de productos
+            Gestiona el catálogo de productos activos.
           </p>
         </div>
-        <Button icon={Plus}>
-          Añadir Producto
-        </Button>
+        <div className="flex gap-4">
+          <Button icon={ArchiveX} variant="outline" onClick={() => setIsArchivedModalOpen(true)}>
+            Ver Archivados ({archivedProducts.length})
+          </Button>
+          <Button icon={Plus} onClick={() => setIsCategoryModalOpen(true)}>
+            Añadir Categoría
+          </Button>
+          <Button icon={Plus} onClick={() => {
+            setSelectedProduct(null)
+            setIsModalOpen(true)
+          }}>
+            Añadir Producto
+          </Button>
+        </div>
       </div>
 
       {/* Search */}
@@ -38,7 +120,7 @@ export default function AdminProductsPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
           <input
             type="text"
-            placeholder="Buscar productos..."
+            placeholder="Buscar productos activos..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
@@ -75,7 +157,7 @@ export default function AdminProductsPage() {
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <img
-                        src={product.image}
+                        src={product.images?.[0] || '/cake-roll.svg'}
                         alt={product.name}
                         className="w-12 h-12 object-cover rounded-lg"
                       />
@@ -88,7 +170,7 @@ export default function AdminProductsPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">
-                    {product.category}
+                    {product.category?.name || 'Sin categoría'}
                   </td>
                   <td className="px-6 py-4 text-sm font-medium text-gray-900">
                     ${product.price.toFixed(2)}
@@ -106,14 +188,21 @@ export default function AdminProductsPage() {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
-                      <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                      <button 
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" 
+                        onClick={() => {
+                          setSelectedProduct(product)
+                          setIsModalOpen(true)
+                        }}
+                      >
                         <Edit className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => handleDelete(product.id)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        onClick={() => handleArchive(product.id)}
+                        className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
+                        title="Archivar"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Archive className="w-4 h-4" />
                       </button>
                     </div>
                   </td>
@@ -123,6 +212,32 @@ export default function AdminProductsPage() {
           </table>
         </div>
       </div>
+
+      {isModalOpen && (
+        <ProductModal
+          product={selectedProduct}
+          categories={categories}
+          onClose={() => {
+            setIsModalOpen(false)
+            setSelectedProduct(null)
+          }}
+          onSave={handleSave}
+        />
+      )}
+
+      {isCategoryModalOpen && (
+        <CategoryModal
+          onClose={() => setIsCategoryModalOpen(false)}
+          onSave={handleSaveCategory}
+        />
+      )}
+
+      <ArchivedProductsModal
+        isOpen={isArchivedModalOpen}
+        onClose={() => setIsArchivedModalOpen(false)}
+        products={archivedProducts}
+        onRestore={handleRestore}
+      />
     </div>
   )
 }

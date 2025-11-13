@@ -34,11 +34,11 @@ Sigue estos pasos para levantar el proyecto en tu máquina local.
 
 1. Clona el repositorio:
    ```sh
-   git clone https://github.com/TheBeastDev/proyecto-santa-martha
+   git clone <URL_DEL_REPOSITORIO>
    ```
 2. Navega al directorio del proyecto:
    ```sh
-   cd santa-martha
+   cd santa-marta
    ```
 3. Instala las dependencias:
    ```sh

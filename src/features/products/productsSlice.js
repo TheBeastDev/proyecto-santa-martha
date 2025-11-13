@@ -1,82 +1,69 @@
-import { createSlice, createSelector } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import axios from 'axios';
 
-const mockProducts = [
-  {
-    id: 1,
-    name: 'Pan de Campo',
-    description: 'Elaborado con masa madre y larga fermentación.',
-    price: 5.00,
-    image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=800',
-    category: 'Pan',
-    stock: 50,
-  },
-  {
-    id: 2,
-    name: 'Croissant de Almendras',
-    description: 'Hojaldre de manteca relleno de crema de almendras.',
-    price: 3.50,
-    image: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=800',
-    category: 'Facturas',
-    stock: 30,
-  },
-  {
-    id: 3,
-    name: 'Torta Selva Negra',
-    description: 'Bizcocho de chocolate, crema y cerezas.',
-    price: 25.00,
-    image: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=800',
-    category: 'Tortas',
-    stock: 10,
-  },
-  {
-    id: 4,
-    name: 'Pan de Masa Madre',
-    description: 'Sabor intenso y miga alveolada.',
-    price: 6.00,
-    image: 'https://images.unsplash.com/photo-1549931319-a545dcf3bc73?w=800',
-    category: 'Pan',
-    stock: 40,
-  },
-  {
-    id: 5,
-    name: 'Medialunas de Manteca',
-    description: 'Tiernas, dulces y con un glaseado perfecto.',
-    price: 2.50,
-    image: 'https://images.unsplash.com/photo-1599599810769-bcde5a160d32?w=800',
-    category: 'Facturas',
-    stock: 60,
-  },
-  {
-    id: 6,
-    name: 'Torta de Chocolate',
-    description: 'Húmeda, intensa y con cobertura de ganache.',
-    price: 30.00,
-    image: 'https://images.unsplash.com/photo-1606890737304-57a1ca8a5b62?w=800',
-    category: 'Tortas',
-    stock: 8,
-  },
-  {
-    id: 7,
-    name: 'Croissant de Mantequilla',
-    description: 'Elaborado con una mezcla de harina de centeno y trigo integral.',
-    price: 4.50,
-    image: 'https://images.unsplash.com/photo-1530610476181-d83430b64dcd?w=800',
-    category: 'Facturas',
-    stock: 35,
-  },
-  {
-    id: 8,
-    name: 'Muffin de Arándanos',
-    description: 'Esponjoso y lleno de arándanos frescos.',
-    price: 3.00,
-    image: 'https://images.unsplash.com/photo-1607958996333-41aef7caefaa?w=800',
-    category: 'Facturas',
-    stock: 45,
-  },
-];
+export const fetchProducts = createAsyncThunk(
+  'products/fetchProducts',
+  async (_, { rejectWithValue }) => {
+    try {
+      // This single thunk will be used by both public and admin.
+      // The backend will decide what data to return based on the user's role.
+      const token = localStorage.getItem('token');
+      const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+      const response = await axios.get('/api/products', config);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'No se pudieron cargar los productos.');
+    }
+  }
+);
+
+export const createProduct = createAsyncThunk(
+  'products/createProduct',
+  async (productData, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem('token');
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+      const response = await axios.post('/api/products', productData, config);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Error al crear el producto.');
+    }
+  }
+);
+
+export const updateProduct = createAsyncThunk(
+  'products/updateProduct',
+  async (productData, { rejectWithValue }) => {
+    try {
+      const { id, ...data } = productData;
+      const token = localStorage.getItem('token');
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+      const response = await axios.put(`/api/products/${id}`, data, config);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Error al actualizar el producto.');
+    }
+  }
+);
+
+export const archiveProduct = createAsyncThunk(
+  'products/archiveProduct',
+  async ({ productId, archive }, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem('token');
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+      const response = await axios.patch(`/api/products/${productId}/archive?archive=${archive}`, {}, config);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Error al archivar el producto.');
+    }
+  }
+);
 
 const initialState = {
-  products: mockProducts,
+  products: [],
+  status: 'idle', // 'idle' | 'loading' | 'succeeded' | 'failed'
+  error: null,
   selectedCategory: null,
   searchQuery: '',
   sortBy: 'popularity',
@@ -95,54 +82,57 @@ const productsSlice = createSlice({
     setSortBy: (state, action) => {
       state.sortBy = action.payload;
     },
+    clearProductsError: (state) => {
+      state.error = null;
+    },
+  },
+  extraReducers: (builder) => {
+    const handlePending = (state) => { state.status = 'loading'; };
+    const handleRejected = (state, action) => {
+      state.status = 'failed';
+      state.error = action.payload;
+    };
+    
+    builder
+      .addCase(fetchProducts.pending, handlePending)
+      .addCase(fetchProducts.fulfilled, (state, action) => {
+        state.status = 'succeeded';
+        state.products = Array.isArray(action.payload) ? action.payload : [];
+      })
+      .addCase(fetchProducts.rejected, handleRejected)
+      .addCase(createProduct.fulfilled, (state, action) => {
+        state.products.push(action.payload);
+      })
+      .addCase(createProduct.rejected, handleRejected)
+      .addCase(updateProduct.fulfilled, (state, action) => {
+        const index = state.products.findIndex(p => p.id === action.payload.id);
+        if (index !== -1) { state.products[index] = action.payload; }
+      })
+      .addCase(updateProduct.rejected, handleRejected)
+      .addCase(archiveProduct.fulfilled, (state, action) => {
+        const index = state.products.findIndex(p => p.id === action.payload.id);
+        if (index !== -1) { state.products[index] = action.payload; }
+      })
+      .addCase(archiveProduct.rejected, handleRejected);
   },
 });
 
-export const { setSelectedCategory, setSearchQuery, setSortBy } = productsSlice.actions;
+export const { 
+  setSelectedCategory, 
+  setSearchQuery, 
+  setSortBy, 
+  clearProductsError 
+} = productsSlice.actions;
 
 // Selectors
-const selectProducts = state => state.products.products;
-const selectSelectedCategory = state => state.products.selectedCategory;
-const selectSearchQuery = state => state.products.searchQuery;
-const selectSortBy = state => state.products.sortBy;
+export const selectProducts = (state) => state.products.products;
+export const selectProductsStatus = (state) => state.products.status;
+export const selectProductsError = (state) => state.products.error;
+export const selectSearchQuery = (state) => state.products.searchQuery;
+export const selectSelectedCategory = (state) => state.products.selectedCategory;
+export const selectSortBy = (state) => state.products.sortBy;
 
-export const selectFilteredProducts = createSelector(
-  [selectProducts, selectSelectedCategory, selectSearchQuery, selectSortBy],
-  (products, selectedCategory, searchQuery, sortBy) => {
-    let filtered = [...products];
-
-    if (selectedCategory) {
-      filtered = filtered.filter(p => p.category === selectedCategory);
-    }
-
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(p =>
-        p.name.toLowerCase().includes(query) ||
-        p.description.toLowerCase().includes(query)
-      );
-    }
-
-    if (sortBy === 'price-asc') {
-      filtered.sort((a, b) => a.price - b.price);
-    } else if (sortBy === 'price-desc') {
-      filtered.sort((a, b) => b.price - a.price);
-    } else if (sortBy === 'name') {
-      filtered.sort((a, b) => a.name.localeCompare(b.name));
-    }
-
-    return filtered;
-  }
-);
-
-export const selectCategories = createSelector(
-  [selectProducts],
-  (products) => [...new Set(products.map(p => p.category))]
-);
-
-export const selectProductById = createSelector(
-  [selectProducts, (state, productId) => productId],
-  (products, productId) => products.find(p => p.id === parseInt(productId))
-);
+export const selectProductById = (state, productId) => 
+  state.products.products.find(product => product.id === productId);
 
 export default productsSlice.reducer;
