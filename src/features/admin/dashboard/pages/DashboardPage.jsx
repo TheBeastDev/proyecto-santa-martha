@@ -1,55 +1,94 @@
-import { DollarSign, ShoppingCart, Users, Package, TrendingUp, TrendingDown } from 'lucide-react'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { useSelector } from 'react-redux'
+import { useEffect, useMemo } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { DollarSign, ShoppingCart, Users, Package } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { fetchAllOrders, selectOrders } from '@features/orders/ordersSlice';
+import { fetchProducts, selectProducts } from '@features/products/productsSlice';
+import { fetchAllUsers, selectAllUsers } from '@features/admin/users/usersSlice';
 
 export default function DashboardPage() {
-  const orders = useSelector((state) => state.orders.orders)
-  const products = useSelector((state) => state.products.products)
+  const dispatch = useDispatch();
+  const orders = useSelector(selectOrders);
+  const products = useSelector(selectProducts);
+  const users = useSelector(selectAllUsers);
+
+  useEffect(() => {
+    dispatch(fetchAllOrders());
+    dispatch(fetchProducts({}));
+    dispatch(fetchAllUsers());
+  }, [dispatch]);
 
   // Métricas
-  const totalRevenue = orders
-    .filter(order => order.status === 'Completado')
-    .reduce((sum, order) => sum + order.total, 0)
-  
-  const pendingOrders = orders.filter(order => order.status === 'Pendiente').length
-  const newCustomers = 8
-  const lowStockProducts = products.filter(p => p.stock < 10).length
+  const todaysRevenue = useMemo(() => {
+    const today = new Date().toDateString();
+    return orders
+      .filter(order => {
+        const orderDate = new Date(order.createdAt).toDateString();
+        return order.status === 'COMPLETED' && orderDate === today;
+      })
+      .reduce((sum, order) => sum + order.total, 0);
+  }, [orders]);
 
-  // Datos para gráfica
-  const salesData = [
-    { month: 'Ene', sales: 30000 },
-    { month: 'Feb', sales: 35000 },
-    { month: 'Mar', sales: 42000 },
-    { month: 'Abr', sales: 38000 },
-    { month: 'May', sales: 50000 },
-    { month: 'Jun', sales: 55000 },
-    { month: 'Jul', sales: 45231 }
-  ]
+  const pendingOrders = orders.filter(order => order.status === 'PENDING').length;
+
+  const newCustomersToday = useMemo(() => {
+    const today = new Date().toDateString();
+    return users.filter(user => {
+      const userDate = new Date(user.createdAt).toDateString();
+      return userDate === today;
+    }).length;
+  }, [users]);
+
+  const lowStockProducts = products.filter(p => p.stock <= 10).length;
+
+  const totalRevenue = useMemo(() => {
+    return orders
+      .filter(order => order.status === 'COMPLETED')
+      .reduce((sum, order) => sum + order.total, 0);
+  }, [orders]);
+
+  // Process data for sales chart
+  const salesData = useMemo(() => {
+    const monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+    const monthlySales = {};
+
+    orders
+      .filter(order => order.status === 'COMPLETED')
+      .forEach(order => {
+        const date = new Date(order.createdAt);
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth()).padStart(2, '0')}`;
+        
+        if (!monthlySales[monthKey]) {
+          monthlySales[monthKey] = {
+            name: `${monthNames[date.getMonth()]} '${String(date.getFullYear()).slice(2)}`,
+            sales: 0,
+            sortKey: date.getFullYear() * 100 + date.getMonth(),
+          };
+        }
+        monthlySales[monthKey].sales += order.total;
+      });
+
+    return Object.values(monthlySales).sort((a, b) => a.sortKey - b.sortKey);
+  }, [orders]);
 
   const stats = [
     {
-      title: 'Ingresos de Hoy',
-      value: `$${(totalRevenue / 30).toFixed(2)}`,
-      change: '+5%',
-      trend: 'up',
+      title: 'Ingresos Totales',
+      value: `$${totalRevenue.toFixed(2)}`,
       icon: DollarSign,
       bgColor: 'bg-green-50',
       iconColor: 'text-green-600'
     },
     {
-      title: 'Pedidos por Procesar',
-      value: pendingOrders,
-      change: '+2%',
-      trend: 'up',
+      title: 'Total Pedidos',
+      value: orders.length,
       icon: ShoppingCart,
       bgColor: 'bg-blue-50',
       iconColor: 'text-blue-600'
     },
     {
-      title: 'Nuevos Clientes',
-      value: newCustomers,
-      change: '+10%',
-      trend: 'up',
+      title: 'Nuevos Clientes Hoy',
+      value: newCustomersToday,
       icon: Users,
       bgColor: 'bg-purple-50',
       iconColor: 'text-purple-600'
@@ -57,15 +96,13 @@ export default function DashboardPage() {
     {
       title: 'Stock Crítico',
       value: lowStockProducts,
-      change: '-1%',
-      trend: 'down',
       icon: Package,
       bgColor: 'bg-red-50',
       iconColor: 'text-red-600'
     }
-  ]
+  ];
 
-  const recentOrders = orders.slice(0, 5)
+  const recentOrders = orders.filter(order => order.status === 'COMPLETED').slice(0, 5);
 
   return (
     <div className="space-y-8">
@@ -84,16 +121,6 @@ export default function DashboardPage() {
               <div className={`${stat.bgColor} p-3 rounded-lg`}>
                 <stat.icon className={`w-6 h-6 ${stat.iconColor}`} />
               </div>
-              <div className={`flex items-center gap-1 text-sm font-medium ${
-                stat.trend === 'up' ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {stat.trend === 'up' ? (
-                  <TrendingUp className="w-4 h-4" />
-                ) : (
-                  <TrendingDown className="w-4 h-4" />
-                )}
-                {stat.change}
-              </div>
             </div>
             <h3 className="text-gray-600 text-sm mb-1">{stat.title}</h3>
             <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
@@ -110,7 +137,7 @@ export default function DashboardPage() {
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={salesData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis dataKey="month" stroke="#9ca3af" />
+            <XAxis dataKey="name" stroke="#9ca3af" />
             <YAxis stroke="#9ca3af" />
             <Tooltip 
               contentStyle={{ 
@@ -161,16 +188,16 @@ export default function DashboardPage() {
               {recentOrders.map((order) => (
                 <tr key={order.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    #{order.id}
+                    #{order.orderNumber}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                    {order.customer}
+                    {order.user?.name || 'Usuario Eliminado'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      order.status === 'Pendiente'
+                      order.status === 'PENDING'
                         ? 'bg-yellow-100 text-yellow-800'
-                        : order.status === 'En proceso'
+                        : order.status === 'PROCESSING'
                         ? 'bg-blue-100 text-blue-800'
                         : 'bg-green-100 text-green-800'
                     }`}>

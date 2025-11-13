@@ -28,20 +28,20 @@ export default function AboutPage() {
     {
       name: 'María Rodríguez',
       role: 'Maestra Panadera',
-      image: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400',
+      image: 'https://images.unsplash.com/photo-1625489409904-324a5e9591e1?q=80&w=764&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
       description: '25 años de experiencia en panadería artesanal.'
     },
     {
       name: 'Carlos Mendoza',
       role: 'Chef Pastelero',
-      image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400',
+      image: 'https://images.unsplash.com/photo-1577219491135-ce391730fb2c?w=400&q=80',
       description: 'Especialista en tortas y postres personalizados.'
     },
     {
       name: 'Ana López',
-      role: 'Gerente de Producción',
-      image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400',
-      description: 'Garantiza la calidad en cada proceso de elaboración.'
+      role: 'Gerente de Tienda',
+      image: 'https://images.unsplash.com/photo-1594744803329-e58b31de8bf5?w=400&q=80',
+      description: 'Garantiza la mejor atención y experiencia para nuestros clientes.'
     }
   ]
 
@@ -159,13 +159,13 @@ export default function AboutPage() {
             {team.map((member, index) => (
               <div
                 key={index}
-                className="bg-cream rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow group"
+                className="bg-cream rounded-2xl pt-8 overflow-hidden shadow-lg hover:shadow-xl transition-shadow group"
               >
-                <div className="aspect-square overflow-hidden">
+                <div className="flex justify-center">
                   <img
                     src={member.image}
                     alt={member.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    className="w-48 h-48 object-cover rounded-full border-4 border-white shadow-md group-hover:scale-105 transition-transform duration-300"
                   />
                 </div>
                 <div className="p-6 text-center">

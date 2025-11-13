@@ -1,15 +1,37 @@
+import { useState, useEffect } from 'react'
 import { AlertTriangle, TrendingUp, TrendingDown } from 'lucide-react'
 import { useSelector, useDispatch } from 'react-redux'
+import { updateProduct } from '@features/products/productsSlice'
 
 export default function AdminStockPage() {
   const products = useSelector((state) => state.products.products)
   const dispatch = useDispatch()
+  const [stockValues, setStockValues] = useState({})
 
-  const lowStockProducts = products.filter(p => p.stock < 10)
+  useEffect(() => {
+    // Initialize local state with stock values from Redux store
+    const initialStock = products.reduce((acc, product) => {
+      acc[product.id] = product.stock;
+      return acc;
+    }, {});
+    setStockValues(initialStock);
+  }, [products]);
+
+  const lowStockProducts = products.filter(p => p.stock <= 10 && p.stock > 0)
   const outOfStockProducts = products.filter(p => p.stock === 0)
 
   const handleStockChange = (productId, newStock) => {
-    // dispatch(updateProductStock({ productId, newStock })) // Se implementará en el slice
+    setStockValues(prev => ({
+      ...prev,
+      [productId]: parseInt(newStock, 10)
+    }));
+  }
+
+  const handleUpdateStock = (productId) => {
+    const newStock = stockValues[productId];
+    if (newStock !== undefined && !isNaN(newStock)) {
+      dispatch(updateProduct({ id: productId, stock: newStock }));
+    }
   }
 
   return (
@@ -92,7 +114,7 @@ export default function AdminStockPage() {
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <img
-                        src={product.image}
+                        src={product.images?.[0] || '/cake-roll.svg'}
                         alt={product.name}
                         className="w-12 h-12 object-cover rounded-lg"
                       />
@@ -100,12 +122,12 @@ export default function AdminStockPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">
-                    {product.category}
+                    {product.category?.name || 'Sin categoría'}
                   </td>
                   <td className="px-6 py-4">
                     <input
                       type="number"
-                      value={product.stock}
+                      value={stockValues[product.id] || 0}
                       onChange={(e) => handleStockChange(product.id, e.target.value)}
                       className="w-20 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                       min="0"
@@ -127,7 +149,10 @@ export default function AdminStockPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm">
-                    <button className="text-primary hover:text-primary-dark font-medium">
+                    <button 
+                      onClick={() => handleUpdateStock(product.id)}
+                      className="text-primary hover:text-primary-dark font-medium"
+                    >
                       Actualizar
                     </button>
                   </td>

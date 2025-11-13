@@ -1,19 +1,29 @@
-import { useState } from 'react'
-import { Eye, Filter } from 'lucide-react'
-import { useSelector, useDispatch } from 'react-redux'
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { Eye, Filter } from 'lucide-react';
+import { useSelector, useDispatch } from 'react-redux';
+import { fetchAllOrders, updateOrderStatus } from '@features/orders/ordersSlice';
+import { orderStatusMap, getOrderStatusClassName } from '@shared/utils/orderStatus';
 
 export default function AdminOrdersPage() {
-  const orders = useSelector((state) => state.orders.orders)
-  const dispatch = useDispatch()
-  const [filterStatus, setFilterStatus] = useState('all')
+  const orders = useSelector((state) => state.orders.orders);
+  const dispatch = useDispatch();
+  const [filterStatus, setFilterStatus] = useState('all');
 
-  const filteredOrders = filterStatus === 'all'
-    ? orders
-    : orders.filter(order => order.status === filterStatus)
+  useEffect(() => {
+    dispatch(fetchAllOrders());
+  }, [dispatch]);
+
+  const filteredOrders =
+    filterStatus === 'all'
+      ? orders
+      : orders.filter((order) => order.status === filterStatus);
 
   const handleStatusChange = (orderId, newStatus) => {
-    // dispatch(updateOrderStatus({ orderId, newStatus })) // Se implementará en el slice
-  }
+    dispatch(updateOrderStatus({ orderId, status: newStatus }));
+  };
+
+  const statusOptions = Object.entries(orderStatusMap);
 
   return (
     <div className="space-y-6">
@@ -34,9 +44,9 @@ export default function AdminOrdersPage() {
             className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <option value="all">Todos los pedidos</option>
-            <option value="Pendiente">Pendientes</option>
-            <option value="En proceso">En proceso</option>
-            <option value="Completado">Completados</option>
+            {statusOptions.map(([status, { text }]) => (
+              <option key={status} value={status}>{text}</option>
+            ))}
           </select>
         </div>
       </div>
@@ -68,11 +78,11 @@ export default function AdminOrdersPage() {
               {filteredOrders.map((order) => (
                 <tr key={order.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                    #{order.id}
+                    #{order.orderNumber}
                   </td>
                   <td className="px-6 py-4">
                     <div>
-                      <p className="font-medium text-gray-900">{order.customer}</p>
+                      <p className="font-medium text-gray-900">{order.user?.name || 'Usuario Eliminado'}</p>
                       <p className="text-sm text-gray-500">
                         {new Date(order.createdAt).toLocaleDateString()}
                       </p>
@@ -82,27 +92,21 @@ export default function AdminOrdersPage() {
                     <select
                       value={order.status}
                       onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                      className={`px-3 py-1 text-xs font-semibold rounded-full border-2 focus:outline-none focus:ring-2 focus:ring-primary ${
-                        order.status === 'Pendiente'
-                          ? 'bg-yellow-50 text-yellow-800 border-yellow-200'
-                          : order.status === 'En proceso'
-                          ? 'bg-blue-50 text-blue-800 border-blue-200'
-                          : 'bg-green-50 text-green-800 border-green-200'
-                      }`}
+                      className={`px-3 py-1 text-xs font-semibold rounded-full border-2 focus:outline-none focus:ring-2 focus:ring-primary ${getOrderStatusClassName(order.status)}`}
                     >
-                      <option value="Pendiente">Pendiente</option>
-                      <option value="En proceso">En proceso</option>
-                      <option value="Completado">Completado</option>
+                      {statusOptions.map(([status, { text }]) => (
+                        <option key={status} value={status}>{text}</option>
+                      ))}
                     </select>
                   </td>
                   <td className="px-6 py-4 text-sm font-medium text-gray-900">
                     ${order.total.toFixed(2)}
                   </td>
                   <td className="px-6 py-4">
-                    <button className="flex items-center gap-2 text-primary hover:text-primary-dark font-medium text-sm">
+                    <Link to={`/admin/pedidos/${order.id}`} className="flex items-center gap-2 text-primary hover:text-primary-dark font-medium text-sm">
                       <Eye className="w-4 h-4" />
                       Ver detalles
-                    </button>
+                    </Link>
                   </td>
                 </tr>
               ))}

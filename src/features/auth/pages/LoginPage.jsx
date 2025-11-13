@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
-import { useDispatch } from 'react-redux'
-import { loginSuccess } from '@features/auth/authSlice'
+import { useDispatch, useSelector } from 'react-redux' // Import useSelector
+import { loginUser, selectAuthStatus, selectAuthError } from '@features/auth/authSlice' // Import loginUser, status, error
 import Input from '@shared/components/Input'
 import Button from '@shared/components/Button'
 import { LogIn } from 'lucide-react'
@@ -10,30 +10,22 @@ import { LogIn } from 'lucide-react'
 export default function LoginPage() {
   const navigate = useNavigate()
   const dispatch = useDispatch()
-  const [error, setError] = useState('')
+  const authStatus = useSelector(selectAuthStatus); // Get auth status
+  const authError = useSelector(selectAuthError); // Get auth error
   
   const { register, handleSubmit, formState: { errors } } = useForm()
 
-  const onSubmit = (data) => {
-    // Mock authentication - En producción, esto haría una llamada al backend
-    if (data.email && data.password) {
-      const mockUser = {
-        id: 1,
-        name: 'Usuario Demo',
-        email: data.email,
-        role: data.email.includes('admin') ? 'ADMINISTRADOR' : 'CLIENTE'
-      }
-      
-      dispatch(loginSuccess({ user: mockUser, token: 'fake-jwt-token' }))
-      
-      // Redirigir según el rol
-      if (mockUser.role === 'ADMINISTRADOR') {
-        navigate('/admin')
+  const onSubmit = async (data) => {
+    try {
+      const resultAction = await dispatch(loginUser(data)).unwrap();
+      // Redirect based on role (assuming role is part of the user object in resultAction)
+      if (resultAction.user.role === 'ADMIN') { // Use 'ADMIN' as per backend enum
+        navigate('/admin');
       } else {
-        navigate('/')
+        navigate('/');
       }
-    } else {
-      setError('Credenciales inválidas')
+    } catch (error) {
+      // Error handled by extraReducers, can display a generic message or specific error from state
     }
   }
 
@@ -53,9 +45,9 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {error && (
+          {authStatus === 'failed' && authError && ( // Display error from Redux state
             <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
-              {error}
+              {authError.message || 'Credenciales inválidas'}
             </div>
           )}
 
@@ -63,6 +55,7 @@ export default function LoginPage() {
             <Input
               label="Correo Electrónico"
               type="email"
+              autoComplete="email"
               placeholder="tu@email.com"
               error={errors.email?.message}
               {...register('email', {
@@ -77,6 +70,7 @@ export default function LoginPage() {
             <Input
               label="Contraseña"
               type="password"
+              autoComplete="current-password"
               placeholder="••••••••"
               error={errors.password?.message}
               {...register('password', {
@@ -106,8 +100,8 @@ export default function LoginPage() {
               </Link>
             </div>
 
-            <Button type="submit" fullWidth size="lg">
-              Iniciar Sesión
+            <Button type="submit" fullWidth size="lg" disabled={authStatus === 'loading'}>
+              {authStatus === 'loading' ? 'Iniciando Sesión...' : 'Iniciar Sesión'}
             </Button>
           </form>
 

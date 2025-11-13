@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form'
 import { useSelector, useDispatch } from 'react-redux'
 import { Check, CreditCard, Truck, Lock } from 'lucide-react'
 import { clearCart, selectTotalPrice, selectCartItems } from '@features/cart/cartSlice'
-import { addOrder } from '@features/orders/ordersSlice'
+import { createOrder } from '@features/orders/ordersSlice' // Import createOrder async thunk
 import Input from '@shared/components/Input'
 import Button from '@shared/components/Button'
 
@@ -12,6 +12,7 @@ export default function CheckoutPage() {
   const navigate = useNavigate()
   const dispatch = useDispatch()
   const [step, setStep] = useState(1)
+  const [shippingDetails, setShippingDetails] = useState(null); // State to store shipping details
   
   const items = useSelector(selectCartItems)
   const subtotal = useSelector(selectTotalPrice)
@@ -29,24 +30,25 @@ export default function CheckoutPage() {
   ]
 
   const onSubmitShipping = (data) => {
+    setShippingDetails(data); // Store shipping details
     setStep(2)
   }
 
-  const onSubmitPayment = (data) => {
-    const order = {
-      customer: user?.name || data.fullName,
-      items: items.map(item => ({
-        name: item.product.name,
-        quantity: item.quantity,
-        price: item.product.price
-      })),
-      total: total,
-      shippingAddress: data
-    }
+  const onSubmitPayment = async (data) => {
+    try {
+      const orderData = {
+        paymentMethod: data.paymentMethod, // Get payment method from form
+        deliveryAddress: `${shippingDetails.address}, ${shippingDetails.city}, ${shippingDetails.state}, ${shippingDetails.postalCode}`,
+        phone: shippingDetails.phone,
+      };
 
-    dispatch(addOrder(order))
-    dispatch(clearCart())
-    setStep(3)
+      await dispatch(createOrder(orderData)).unwrap(); // Dispatch async thunk
+      dispatch(clearCart()); // Clear cart after successful order
+      setStep(3);
+    } catch (error) {
+      console.error('Failed to create order:', error);
+      // Handle error, e.g., show a toast notification
+    }
   }
 
   if (items.length === 0 && step !== 3) {
@@ -184,44 +186,28 @@ export default function CheckoutPage() {
                   Información de Pago
                 </h2>
                 <p className="text-gray-600 mb-6">
-                  Completa los datos de tu tarjeta de forma segura.
+                  Selecciona tu método de pago.
                 </p>
 
                 <form onSubmit={handleSubmit(onSubmitPayment)} className="space-y-6">
-                  <Input
-                    label="Número de Tarjeta"
-                    placeholder="1234 5678 9012 3456"
-                    {...register('cardNumber', {
-                      required: 'El número de tarjeta es requerido'
-                    })}
-                  />
-
-                  <div className="grid grid-cols-2 gap-6">
-                    <Input
-                      label="Fecha de Vencimiento"
-                      placeholder="MM/YY"
-                      {...register('expiry', {
-                        required: 'La fecha es requerida'
-                      })}
-                    />
-                    <Input
-                      label="CVV"
-                      placeholder="123"
-                      type="password"
-                      maxLength={4}
-                      {...register('cvv', {
-                        required: 'El CVV es requerido'
-                      })}
-                    />
+                  <div className="mb-6">
+                    <label htmlFor="paymentMethod" className="block text-sm font-medium text-gray-700 mb-2">
+                      Método de Pago
+                    </label>
+                    <select
+                      id="paymentMethod"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                      {...register('paymentMethod', { required: 'El método de pago es requerido' })}
+                    >
+                      <option value="">Selecciona un método</option>
+                      <option value="CREDIT_CARD">Tarjeta de Crédito</option>
+                      <option value="DEBIT_CARD">Tarjeta de Débito</option>
+                      <option value="CASH">Efectivo</option>
+                    </select>
+                    {errors.paymentMethod && (
+                      <p className="mt-2 text-sm text-red-600">{errors.paymentMethod.message}</p>
+                    )}
                   </div>
-
-                  <Input
-                    label="Nombre en la Tarjeta"
-                    placeholder="JUAN PEREZ"
-                    {...register('cardName', {
-                      required: 'El nombre es requerido'
-                    })}
-                  />
 
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
                     <Lock className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
